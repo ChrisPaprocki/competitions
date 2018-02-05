@@ -109,13 +109,18 @@ contract Competition is DBC {
     function getCompetitionStatusOfHopefuls()
         view
         returns(
-            address[] fundAddrs,
-            address[] fundManagers,
-            bool[] areCompeting,
-            bool[] areDisqualified
+            address[],
+            address[],
+            bool[],
+            bool[]
         )
     {
-        for (uint i = 0; i <= hopefuls.length - 1; i++) {
+        address[] memory fundAddrs = new address[](hopefuls.length);
+        address[] memory fundManagers = new address[](hopefuls.length);
+        bool[] memory areCompeting = new bool[](hopefuls.length);
+        bool[] memory areDisqualified = new bool[](hopefuls.length);
+
+        for (uint i = 0; i < hopefuls.length; i++) {
             fundAddrs[i] = hopefuls[i].fund;
             fundManagers[i] = hopefuls[i].manager;
             areCompeting[i] = hopefuls[i].isCompeting;
