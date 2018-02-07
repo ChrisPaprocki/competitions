@@ -11,7 +11,7 @@ const simpleCertifierAbi = JSON.parse(fs.readFileSync('./out/SimpleCertifier.abi
 const simpleCertifierBin = fs.readFileSync('./out/SimpleCertifier.bin', 'utf8');
 const tokenAbi = JSON.parse(fs.readFileSync('./out/ERC20Interface.abi', 'utf8'));
 const tokenBin = fs.readFileSync('./out/ERC20Interface.bin', 'utf8');
-const TERMS_AND_CONDITIONS = '0x1A46B45CC849E26BB3159298C3C218EF300D015ED3E23495E77F0E529CE9F69E';
+const TERMS_AND_CONDITIONS = '0x1a46b45cc849e26bb3159298c3c218ef300d015ed3e23495e77f0e529ce9f69e';
 
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
@@ -30,6 +30,7 @@ let simpleCertifier;
 let token;
 
 before('Deploy contract', async () => {
+
   accounts = await web3.eth.getAccounts();
   simpleCertifier = await new web3.eth.Contract(simpleCertifierAbi)
     .deploy({
@@ -46,14 +47,16 @@ before('Deploy contract', async () => {
   contract = await new web3.eth.Contract(abi)
     .deploy({
       data: competitionBin,
-      arguments: [token.options.address, accounts[0], simpleCertifier.options.address, 900000000000, 0, 600, 80],
+      arguments: [token.options.address, accounts[0], simpleCertifier.options.address, 0, 600, 80],
     })
     .send({ from: accounts[0], gas: 4000000 });
+
+    //contract.setProvider(web3.currentProvider); // why?
 });
 
 describe('Competition', () => {
 
-  it('Check if contract initialised', async () => {
+  it('Check if contract is initialised', async () => {
     assert.equal(await contract.methods.TERMS_AND_CONDITIONS().call(), TERMS_AND_CONDITIONS);
   });
 
