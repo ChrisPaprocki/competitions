@@ -2,11 +2,9 @@
 import React, { Component } from 'react';
 import competitionAbi from '../contracts/Competition.json';
 
-const competitionAddress = '0xfc4cb4a1ea9915c5e7bda358234738f8e12e3eb6';
+const competitionAddress = '0x5652AC06E148b8c8d86c2C040fdBbbF98860ef47';
 const melonToken = '0xBEB9eF514a379B997e0798FDcC901Ee474B6D9A1';
-const TERMS_AND_CONDITIONS = '0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad';
-const TERMS_AND_CONDITIONS_METAMASK =
-  '0x93100cc9477ba6522a2d7d5e83d0e075b167224ed8aa0c5860cfd47fa9f22797';
+// const TERMS_AND_CONDITIONS = '0x1a46b45cc849e26bb3159298c3c218ef300d015ed3e23495e77f0e529ce9f69e';
 
 class Registration extends Component {
   constructor(props) {
@@ -30,11 +28,9 @@ class Registration extends Component {
     clearInterval(this.interval);
   }
 
+  /*
   async sign() {
     let hash = TERMS_AND_CONDITIONS;
-    if (this.props.web3.currentProvider.isMetaMask) {
-      hash = TERMS_AND_CONDITIONS_METAMASK;
-    }
     let sig = await this.props.web3.eth.sign(hash, this.props.account);
     sig = sig.substr(2, sig.length);
     const r = `0x${sig.substr(0, 64)}`;
@@ -42,26 +38,28 @@ class Registration extends Component {
     const v = parseFloat(sig.substr(128, 2)) + 27;
     return { r, s, v };
   }
+  */
 
   async handleNext(event) {
     event.preventDefault();
     try {
-      console.log(this.state.payoutAddress);
-      const { r, s, v } = await this.sign();
+      //const { r, s, v } = await this.sign();
       this.setState({ loading: 1 });
       await this.state.contract.methods
         .registerForCompetition(
           this.props.fundAddress,
+          this.props.manager,
           melonToken,
           melonToken,
           this.state.payoutAddress,
           0,
-          v,
-          r,
-          s,
+          this.props.v,
+          this.props.r,
+          this.props.s,
         )
         .send({ from: this.props.account });
     } catch (err) {
+      console.log(err);
       this.props.updateState('errorMessage', 'Registration Failed. Try again');
       this.setState({ loading: 0 });
     }
@@ -69,7 +67,7 @@ class Registration extends Component {
 
   handleBack(event) {
     event.preventDefault();
-    this.props.updateState('step', 2);
+    this.props.updateState('step', 1);
   }
 
   handleChange(event) {
@@ -90,7 +88,7 @@ class Registration extends Component {
           .call({ from: this.props.account });
         if (hopeful.isCompeting === true) {
           this.setState({ loading: 0 });
-          this.props.updateState('step', 4);
+          this.props.updateState('step', 3);
         }
       }
     } catch (err) {
@@ -120,9 +118,6 @@ class Registration extends Component {
           required
         />
         <br />
-        <label htmlFor="terms">Terms and Conditions</label>
-        <p>Some Placeholder</p>
-        <input type="checkbox" id="terms" name="terms" required />I have read the terms<br />
         <input type="submit" className="btn btn-info" value="Submit" />
         <input type="button" onClick={this.handleBack} className="btn btn-secondary" value="Back" />
       </form>

@@ -9,12 +9,21 @@ import Confirmation from './components/Confirmation';
 class App extends Component {
   constructor(props) {
     super(props);
+    const [fundAddress, managerAddress, r, s, v] = document.location.hash.split('/');
     this.state = {
-      fundAddress: '',
+      fundAddress: fundAddress.substring(1),
       errorMessage: '',
       step: 1,
+      manager: managerAddress,
+      v,
+      r,
+      s,
     };
     this.updateState = this.updateState.bind(this);
+  }
+
+  componentDidMount() {
+    document.title = 'Registration';
   }
 
   updateState(variable, value) {
@@ -23,6 +32,7 @@ class App extends Component {
 
   showForm() {
     switch (this.state.step) {
+    /*
       default:
         return (
           <Start
@@ -32,7 +42,8 @@ class App extends Component {
             web3={this.props.web3}
           />
         );
-      case 2:
+     */
+      default:
         return (
           <KYCVerification
             updateState={this.updateState}
@@ -41,16 +52,20 @@ class App extends Component {
             web3={this.props.web3}
           />
         );
-      case 3:
+      case 2:
         return (
           <Registration
             updateState={this.updateState}
             fundAddress={this.state.fundAddress}
+            manager={this.state.manager}
+            v={this.state.v}
+            r={this.state.r}
+            s={this.state.s}
             account={this.props.account}
             web3={this.props.web3}
           />
         );
-      case 4:
+      case 3:
         return <Confirmation />;
     }
   }
@@ -68,7 +83,7 @@ class App extends Component {
   render() {
     //  From tommymarshall/react-multi-step-form
     const progressStyle = {
-      width: `${(this.state.step / 3) * 100}%`,
+      width: `${this.state.step / 2 * 100}%`,
     };
 
     return (

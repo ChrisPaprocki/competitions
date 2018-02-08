@@ -4,18 +4,15 @@ import React, { Component } from 'react';
 class Start extends Component {
   constructor(props) {
     super(props);
-    // this.state = { networkId: 0 };
-    this.props.updateState('fundAddress', window.location.pathname.substr(1));
+    this.state = { networkId: 0 };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
   }
 
-  /*
+
   async componentWillMount() {
-    // const networkId = await this.props.web3.eth.getId();
-    // this.setState({ networkId });
+    this.setState({ networkId: await this.props.web3.eth.net.getId() });
   }
-  */
 
   handleChange(event) {
     this.props.updateState('fundAddress', event.target.value);
@@ -37,14 +34,11 @@ class Start extends Component {
   render() {
     return (
       <form onSubmit={this.handleSubmit}>
-        {/*
         {this.state.networkId !== 1 && (
           <div className="alert alert-warning" role="alert">
             You are not connected to Ethereum main network. Please connect and refresh
           </div>
         )}
-        */
-        }
         <label htmlFor="address">Enter your Fund Address</label>
         <input
           type="text"

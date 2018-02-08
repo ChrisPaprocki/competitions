@@ -8,7 +8,7 @@ class KYCVerification extends Component {
   constructor(props) {
     super(props);
     this.state = { contract: '' };
-    this.handleBack = this.handleBack.bind(this);
+    // this.handleBack = this.handleBack.bind(this);
     this.interval = null;
   }
 
@@ -27,14 +27,16 @@ class KYCVerification extends Component {
       .certified(this.props.account)
       .call();
     if (verified === true) {
-      this.props.updateState('step', 3);
+      this.props.updateState('step', 2);
     }
   }
 
+  /*
   handleBack(event) {
     event.preventDefault();
     this.props.updateState('step', 1);
   }
+  */
 
   render() {
     return (
@@ -44,7 +46,7 @@ class KYCVerification extends Component {
           <label htmlFor="number"><b>Status:</b> <span className="red-text">Not Verified</span></label>
         </div>
         <p>Please wait a few seconds if you are already on the whitelist</p>
-        <input type="button" onClick={this.handleBack} className="btn btn-secondary" value="Back" />
+        {/* <input type="button" onClick={this.handleBack} className="btn btn-secondary" value="Back" /> */}
       </form>
     );
   }
