@@ -37,7 +37,7 @@ contract Competition is DBC {
     // Constant fields
     // Competition terms and conditions as displayed on https://ipfs.io/ipfs/QmQ7DqjpxmTDbaxcH5qwv8QmGvJY7rhb8UV2QRfCEFBp8V
     // IPFS hash encoded using http://lenschulwitz.com/base58
-    bytes32 public constant TERMS_AND_CONDITIONS = 0x1A46B45CC849E26BB3159298C3C218EF300D015ED3E23495E77F0E529CE9F69E;
+    bytes32 public constant TERMS_AND_CONDITIONS = 0x1a46b45cc849e26bb3159298c3c218ef300d015ed3e23495e77f0e529ce9f69e;
     uint public MELON_BASE_UNIT = 10 ** 18;
     // Constructor fields
     address public oracle; // Information e.g. from Kovan can be passed to contract from this address

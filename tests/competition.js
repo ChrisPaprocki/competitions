@@ -2,14 +2,15 @@ const Web3 = require('web3');
 const chai = require('chai');
 const fs = require('fs');
 
+
 const assert = chai.assert;
-const abi = JSON.parse(fs.readFileSync('./out/Competition.abi', 'utf8'));
+const competitionAbi = JSON.parse(fs.readFileSync('./out/Competition.abi', 'utf8'));
 const competitionBin = fs.readFileSync('./out/Competition.bin', 'utf8');
 const simpleCertifierAbi = JSON.parse(fs.readFileSync('./out/SimpleCertifier.abi', 'utf8'));
 const simpleCertifierBin = fs.readFileSync('./out/SimpleCertifier.bin', 'utf8');
-const tokenAbi = JSON.parse(fs.readFileSync('./out/ERC20Interface.abi', 'utf8'));
-const tokenBin = fs.readFileSync('./out/ERC20Interface.bin', 'utf8');
-const TERMS_AND_CONDITIONS = '0x1A46B45CC849E26BB3159298C3C218EF300D015ED3E23495E77F0E529CE9F69E';
+const tokenAbi = JSON.parse(fs.readFileSync('./out/PreminedAsset.abi', 'utf8'));
+const tokenBin = fs.readFileSync('./out/PreminedAsset.bin', 'utf8');
+const TERMS_AND_CONDITIONS = '0x1a46b45cc849e26bb3159298c3c218ef300d015ed3e23495e77f0e529ce9f69e';
 
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
@@ -23,93 +24,125 @@ const sign = async (account) => {
 }
 
 let accounts;
-let contract;
+let deployer;
+let oracle;
+let fund;
+let manager;
+let investor1;
+let investor2;
+let competition;
 let simpleCertifier;
 let token;
 
 before('Deploy contract', async () => {
+
   accounts = await web3.eth.getAccounts();
+  [deployer, oracle, fund, manager, investor1, investor2] = accounts;
   simpleCertifier = await new web3.eth.Contract(simpleCertifierAbi)
     .deploy({
       data: simpleCertifierBin,
       arguments: [],
     })
-    .send({ from: accounts[0], gas: 4000000 });
+    .send({ from: deployer, gas: 4000000 });
   token = await new web3.eth.Contract(tokenAbi)
     .deploy({
       data: tokenBin,
-      arguments: [10000],
     })
-    .send({ from: accounts[0], gas: 4000000 })
-  contract = await new web3.eth.Contract(abi)
+    .send({ from: deployer, gas: 4000000 })
+
+  // Need to know what is the current time stamp to define startTime
+  const number = await web3.eth.getBlockNumber();
+  const latestBlock = await web3.eth.getBlock(number);
+
+  competition = await new web3.eth.Contract(competitionAbi)
     .deploy({
       data: competitionBin,
-      arguments: [token.options.address, accounts[0], simpleCertifier.options.address, 0, 0, 600],
+      arguments: [token.options.address, oracle, simpleCertifier.options.address, latestBlock.timestamp, 600, 80],
     })
-    .send({ from: accounts[0], gas: 4000000 });
+    .send({ from: deployer, gas: 4000000 });
+
+    // TODO: is this really necessary?
+    simpleCertifier.setProvider(web3.currentProvider);
+    token.setProvider(web3.currentProvider);
+    competition.setProvider(web3.currentProvider);
 });
 
 describe('Competition', () => {
 
-  it('Check if contract initialised', async () => {
-    assert.equal(await contract.methods.TERMS_AND_CONDITIONS().call(), TERMS_AND_CONDITIONS);
+  it('Check if competition is initialised', async () => {
+    assert.equal(await competition.methods.TERMS_AND_CONDITIONS().call(), TERMS_AND_CONDITIONS);
   });
 
   it('Check if Registration leads to Hopeful Entry', async () => {
-    const { r, s, v } = await sign(accounts[1]);
+    const { r, s, v } = await sign(manager);
     await simpleCertifier.methods
-      .certify(accounts[1])
-      .send({ from: accounts[0], gas: 1000000 });
-    await contract.methods
-      .registerForCompetition(token.options.address, token.options.address, token.options.address, 20, v, r, s)
-      .send({ from: accounts[1], gas: 1000000 });
-    const hopeful = await contract.methods.hopefuls(0).call();
-    assert.equal(hopeful.registrant, accounts[1]);
+      .certify(investor1)
+      .send({ from: deployer, gas: 1000000 });
+    await competition.methods
+      .registerForCompetition(fund, manager, token.options.address, token.options.address, investor1, 20, v, r, s)
+      .send({ from: investor1, gas: 1000000 });
+    const hopeful = await competition.methods.hopefuls(0).call();
+    assert.equal(hopeful.registrant, investor1);
   });
 
   it('Check if getHopefulId works', async () => {
-    const hopefulId = await contract.methods.getHopefulId(accounts[1]).call();
+    const hopefulId = await competition.methods.getHopefulId(investor1).call();
     assert.equal(hopefulId, 0);
   });
 
   it('Check if Double Registration fails', async () => {
     let error;
     try {
-      const { r, s, v } = await sign(accounts[1]);
-      await contract.methods
-        .registerForCompetition(token.options.address, token.options.address, token.options.address, 20, v, r, s)
-        .send({ from: accounts[1], gas: 1000000 });
+      const { r, s, v } = await sign(manager);
+      await competition.methods
+        .registerForCompetition(fund, manager, token.options.address, token.options.address, investor1, 20, v, r, s)
+        .send({ from: manager, gas: 1000000 });
     }
-    catch (err) {error = err;}
+    catch (err) { error = err; }
     assert.isDefined(error, 'Exception must be thrown');
   });
 
   it('Check if Registration fails on non-verified SMS', async () => {
     let error;
     try {
-      const { r, s, v } = await sign(accounts[2]);
-      await contract.methods
-        .registerForCompetition(token.options.address, token.options.address, token.options.address, 20, v, r, s)
-        .send({ from: accounts[2], gas: 1000000 });
+      const { r, s, v } = await sign(manager);
+      await competition.methods
+        .registerForCompetition(fund, manager, token.options.address, token.options.address, investor2, 20, v, r, s)
+        .send({ from: manager, gas: 1000000 });
     }
-    catch (err) {error = err;}
+    catch (err) { error = err; }
     assert.isDefined(error, 'Exception must be thrown');
   });
 
-  it('Check if isCompeting is set to true on Attestation', async () => {
-    await contract.methods
-      .attestForHopeful(0, 10 ** 18)
-      .send({ from: accounts[0], gas: 1000000 });
-    const hopeful = await contract.methods.hopefuls(0).call();
-    assert.isTrue(hopeful.isCompeting);
+  it('Check if finalizeAndPayoutForHopeful pays correctly', async () => {
+    const amount = 1000;
+    const hopefulId = await competition.methods.getHopefulId(investor1).call();
+
+    await token.methods.transfer(competition.options.address, amount).send({ from: deployer, gas: 1000000 })
+
+    // 2 weeks + 1 day, no error handling
+    await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [86400*15], id: 0}, (e, r) => {});
+
+    await competition.methods
+      .finalizeAndPayoutForHopeful(hopefulId, amount, 10, 1)
+      .send({ from: oracle, gas: 1000000 });
+    const balance = await token.methods.balanceOf(investor1).call();
+    assert.equal(balance, amount);
   });
 
-  it('Check if finalizeAndPayoutForHopeful pays correctly', async () => {
-    await token.methods.transfer(contract.options.address, 1000).send({ from: accounts[0], gas: 1000000 })
-    await contract.methods
-      .finalizeAndPayoutForHopeful(0, 1000, 10, 1)
-      .send({ from: accounts[0], gas: 1000000 });
-    const balance = await token.methods.balanceOf(accounts[1]).call();
-    assert.equal(balance, 1000);
+  it('Check if getCompetitionStatusOfHopefuls works (data integrity check)', async () => {
+    const hopefuls = await competition.methods.getCompetitionStatusOfHopefuls().call();
+
+    // All non-empty?
+    assert.isTrue(hopefuls[0].length !== 0);
+    assert.isTrue(hopefuls[1].length !== 0);
+    assert.isTrue(hopefuls[2].length !== 0);
+    assert.isTrue(hopefuls[3].length !== 0);
+
+    // Compare all returned arrays with expected results. Must be synced with added competitors.
+    assert.isTrue(hopefuls[0].every((elem, idx) => elem === [fund][idx]));  // fundAddrs ok?
+    assert.isTrue(hopefuls[1].every((elem, idx) => elem === [manager][idx]));  // fundManagers ok?
+    assert.isTrue(hopefuls[2].every((elem) => elem === true));  // all areCompeting?
+    assert.isTrue(hopefuls[3].every((elem) => elem === false));  // none areDisqualified?
   });
 });
