@@ -14,6 +14,7 @@ const TERMS_AND_CONDITIONS = '0x1a46b45cc849e26bb3159298c3c218ef300d015ed3e23495
 
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
+// Helper functions
 const sign = async (account) => {
   let sig = await web3.eth.sign(TERMS_AND_CONDITIONS, account);
   sig = sig.substr(2, sig.length);
@@ -21,6 +22,12 @@ const sign = async (account) => {
   const s = `0x${sig.substr(64, 64)}`;
   const v = parseFloat(sig.substr(128, 2)) + 27;
   return { r, s, v };
+}
+
+const transferAndIncreaseUntilEnd = async (amount) => {
+  await token.methods.transfer(competition.options.address, amount).send({ from: deployer, gas: 1000000 })
+  // 2 weeks + 1 day, no error handling
+  await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [86400*15], id: 0}, (e, r) => {});
 }
 
 let accounts;
@@ -114,22 +121,6 @@ describe('Competition', () => {
     assert.isDefined(error, 'Exception must be thrown');
   });
 
-  it('Check if finalizeAndPayoutForHopeful pays correctly', async () => {
-    const amount = 1000;
-    const hopefulId = await competition.methods.getHopefulId(investor1).call();
-
-    await token.methods.transfer(competition.options.address, amount).send({ from: deployer, gas: 1000000 })
-
-    // 2 weeks + 1 day, no error handling
-    await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [86400*15], id: 0}, (e, r) => {});
-
-    await competition.methods
-      .finalizeAndPayoutForHopeful(hopefulId, amount, 10, 1)
-      .send({ from: oracle, gas: 1000000 });
-    const balance = await token.methods.balanceOf(investor1).call();
-    assert.equal(balance, amount);
-  });
-
   it('Check if getCompetitionStatusOfHopefuls works (data integrity check)', async () => {
     const hopefuls = await competition.methods.getCompetitionStatusOfHopefuls().call();
 
@@ -144,5 +135,35 @@ describe('Competition', () => {
     assert.isTrue(hopefuls[1].every((elem, idx) => elem === [manager][idx]));  // fundManagers ok?
     assert.isTrue(hopefuls[2].every((elem) => elem === true));  // all areCompeting?
     assert.isTrue(hopefuls[3].every((elem) => elem === false));  // none areDisqualified?
+  });
+
+  it('Check if finalizeAndPayoutForHopeful pays correctly', async () => {
+    const hopefulId = await competition.methods.getHopefulId(investor1).call();
+    const amount = 1000;
+    await transferAndIncreaseUntilEnd(amount);
+
+    await competition.methods
+      .finalizeAndPayoutForHopeful(hopefulId, amount, 10, 1)
+      .send({ from: oracle, gas: 1000000 });
+    const balance = await token.methods.balanceOf(investor1).call();
+    assert.equal(balance, amount);
+  });
+
+  it('Check if finalizeAndPayoutForHopeful for disqualified fails', async () => {
+    const hopefulId = await competition.methods.getHopefulId(investor1).call();
+    const amount = 1000;
+    await transferAndIncreaseUntilEnd(amount);
+    await competition.methods
+      .disqualifyHopeful(hopefulId)
+      .send({ from: oracle, gas: 1000000 });
+
+    let error;
+    try {
+      await competition.methods
+        .finalizeAndPayoutForHopeful(hopefulId, amount, 10, 1)
+        .send({ from: oracle, gas: 1000000 });
+    }
+    catch (err) { error = err; }
+    assert.isDefined(error, 'Exception must be thrown');
   });
 });
